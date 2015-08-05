@@ -11,8 +11,8 @@ var spritemapLoaded = false;
 var world = [[]];
 
 // world grid size
-var worldWidth = 16;
-var worldHeight = 16;
+var worldWidth = 58;
+var worldHeight = 30;
 
 // size of the tiles in pixels
 var tileWidth = 32;
@@ -24,19 +24,18 @@ var pathEnd = [0,0];
 var currentPath = [];
 
 // some console.log fixes
-/*if (typeof console == "undefined") {
- var console = {
- log: function() {}
- };
- }
- */
+if (typeof console == "undefined") {
+    var console = {
+     log: function() {}
+    };
+}
 
 function onload() {
     console.log('Page loaded.');
     canvas = document.getElementById('gameCanvas');
     canvas.width = worldWidth * tileWidth;
     canvas.height = worldHeight * tileHeight;
-    //    canvas.addEventListener('click', canvasClick, false);
+    canvas.addEventListener('click', canvasClick, false);
     ctx = canvas.getContext('2d');
     spritemap = new Image();
     //spritemap.src = 'spritemap.png';
@@ -145,8 +144,39 @@ function redraw() {
 
          }
       }
-*/
+         */
     }
+}
+
+function canvasClick(event) {
+    var x,y;
+
+    // get page coordinates
+    if(event.pageX != undefined && event.pageY != undefined) {
+        x = event.pageX;
+        y = event.pageY;
+    } else {
+        x = event.clientX + document.body.scrollLeft + document.documentElement.scrollLeft;
+        y = event.clientY + document.body.scrollTop + document.documentElement.scrollTop;
+    }
+
+    // calculate relative coords
+    x -= canvas.offsetLeft;
+    y -= canvas.offsetTop;
+
+    var cell = [
+        Math.floor(x/tileWidth),
+        Math.floor(y/tileHeight)
+    ];
+
+    pathStart = pathEnd;
+    pathEnd = cell;
+
+    console.log('X:'+ cell[0]+','+cell[1]);
+    
+    // calulate path
+    currentPath = findPath(world, pathStart, pathEnd);
+    redraw();
 }
 
 onload();
