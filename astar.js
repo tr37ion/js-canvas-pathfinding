@@ -15,7 +15,7 @@ var world = [[]];
 
 // world grid size
 var worldWidth = 54;
-var worldHeight = 32;
+var worldHeight = 30;
 
 // size of the tiles in pixels
 var tileWidth = 32;
