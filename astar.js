@@ -179,5 +179,142 @@ function canvasClick(event) {
     redraw();
 }
 
+function findPath(world, pathStart, pathEnd) {
+    var abs = Math.abs;
+    var max = Math.max;
+    var pow = Math.pow;
+    var sqrt = Math.sqrt;
+
+    // the world data are integers
+    // anything higher than this number is number is considered blocked
+    // this is handy if you use numbered sprites, more than one
+    // of which is walkable road, grass, mud, etc.
+    var maxWalkableTileNum = 0;
+
+    // keep track out of world dimensions
+    // Note that this A* implementation expects the world array to be square:
+    // it must hvae equal height and width. If your game world is rectengular,
+    // just fill the array with dummy values to pad the empty space.
+    var worldWidth = world[0].length;
+    var worldHeight = world.length;
+    var worldSize = worldWidth * worldHeight;
+
+    // alternate heuristics, depending on your game:
+
+    // diagonals allowed but no squeezing through cracks:
+    // var distanceFunction = DiagonalDistance;
+    // var findNeighbours = DiagonalNeighbours;
+    
+    // diagonals and squeezing through cracks allowed:
+    // var distanceFunction = DiagonalDistance;
+    // var findNeighbours = DiagonalNeighboursFree;
+    
+    // euclidean but no squeezing through cracks:
+    // var distanceFunction = EucledianDistance;
+    // var findNeighbours = DiagonalNeighbours;
+    
+    // euclidean and squeezing through cracks allowed:
+    // var distanceFunction = EucledianDistance;
+    // var findNeighbours = DiagonalNeighboursFree;
+}
+
+// linear movement - no doagonals - just cardinal directions (NSEW)
+function ManhattanDistance(Point, Goal) {
+    return abs(Point.x - Goal.x)  + abs(Point.y - Goal.y);
+}
+
+// diagonal movement - assumes diagonal distance is 1, same as cardinals
+function DiagonalDistance(Point, Goal) {
+    return max(abs(Point.x - Goal.x)), abs(Point.y - Goal.y);
+}
+
+// diagonal movement - assumes diagonal distance is (AC = sqrt(AB^2+BC^2))
+// where AB = x2 -x1 and BC = y2 -y1 and AC = [x3, y3]
+function EucledianDistance(Point, Goal) {
+    return sqrt(pow(Point.x - Goal-x), 2) + pow(Point.y - Goal.y, 2);
+}
+
+function Neighbours(x, y) {
+    var N = y-1;
+    var S = y+1;
+    var E = x+1;
+    var W = x-1;
+
+    var myN = N>1 && canWalkHere(x,N);
+    var myS = S<worldHeight && canWalkHere(x,S);
+    var myE = E<worldWidth && canWalkHere(E,y);
+    var myW = W>-1 && canWalkHere(W,y);
+
+    var result = [];
+
+    if(myN)
+        result.push({x:x, y:N});
+    if(myS)
+        result.push({x:x, y:S});
+    if(myE)
+        result.push({x:E, y:y});
+    if(myW)
+        result.push({x:W, y:y});
+
+    return result;
+}
+
+function DiagonalNeighbours(myN, myS, myE, myW, N, S, E, W, result) {
+    if(myN) {
+        if(myE && canWalkHere(E,N))
+            result.push({x:E, y:N});
+        if(myW && canWalkHere(W,N))
+            result.push({x:W, y:N});
+    }
+    if(myS) {
+        if(myE && canWalkHere(E,S))
+            result.push({x:E, y:S});
+        if(myW && canWalkHere(W,S))
+            result.push({x:W, y:S});
+    }
+}
+
+function DiagonalNeighboursFree(myN, myS, myE, myW, N, S, E, W, result) {
+    myN = N>-1;
+    myS = S<worldHeight;
+    myE = E<worldWidth;
+    myW = W>-1;
+    if(myE) {
+        if(myE && canWalkHere(E,N))
+            result.push({x:E, y:N});
+        if(myW && canWalkHere(E,S))
+            result.push({x:E, y:S});
+    }
+    if(myW) {
+        if(myE && canWalkHere(W,N))
+            result.push({x:W, y:N});
+        if(myW && canWalkHere(W,S))
+            result.push({x:W, y:S});
+    }    
+}
+
+// determine if defined cell is walkable
+function canWalkHere(x,y) {
+    return ((world[x] != null) &&
+            (world[x][y] != null) &&
+            (world[x][y] <= maxWalkableTileNum));
+};
+
+// node function returs a new node world object
+// store route movement costs
+function Node(Parent, Point) {
+    var Node = {
+        Parent:Parent, //pointer to another Node object
+        value:Point.x+Point.y*worldWidth, // array index of the Node in the linear array
+        x:Pint.x, // x location
+        y:Point.y, //y location
+        fS:0, //distance cost from Start to Node
+        tG:0  //distance cost from Node to Goal 
+    };
+    return newNode;
+}
+
+// Pathfinding function here
+
 onload();
 
