@@ -314,7 +314,71 @@ function Node(Parent, Point) {
     return newNode;
 }
 
-// Pathfinding function here
+// Pathfinding function
+function calulatePath() {
+    var mypathStart = Node(null, {x:pathStart[0], y:pathStart[1]});
+    var mypathEnd = Node(null, {x:pathEnd[0], y:pathEnd[1]});
+    var AStar = new Array(worldSize); // create an array with all worldcoordinates
+    var Open = [mypathStart]; // list of currently open nodes
+    var Closed = []; // list of closed nodes
+    var result = []; // list of final output array
+    var myNeighbours; // reference to a Node (that is nearby)
+    var myNode; // reference to a Node (that we are considering now)
+    var myPath; // reference to a Node (that starts a path in question)
+    var length, max, min, i, j; // temp variables
+
+    // interate through the opne list until none are left
+    while(length = Open.length) {
+        max = worldSize;
+        min = -1;
+
+        for(i=0; i<length; i++) {
+            if(Open[i].tS < max) {
+                max = Open[i].tS;
+                min = i;
+            }
+        }
+
+        // grab the next Node and remove it from Open array
+        myNode = Open.splice(min, 1)[0];
+
+        // is it the destionation Node?
+        if(myNode.value === myPathEnd.value) {
+            myPath = Closed[Closed.push(myNode)-1];
+            do {
+                result.push([myPath.x, myPath.y]);
+            } while(myPath = myPath.Parent);
+
+            // clear the working arrays
+            AStar = Closed = Open = [];
+
+            // we want to return start to finish
+            result.reverse();
+        } else { // not the destionation Node
+            // find which nearby nodes are walkable
+            myNeighbours = Neighbours(myNode.x, myNode.y);
+            // test each one that hasn't been treid already
+            for(i=0,j=myNeighbours.length; i<j; i++) {
+                myPath = Node(myNode, myNeighbours[i]);
+                if(!AStar[myPath.value]) {
+                    // estimated cost of thie particular route so far
+                    myPath = myNode.tG + distanceFunction(myNeighbours[i], myNode);
+                    // estimated cost of entire guessed route to the destionation
+                    myPath = myPath.tG + distanceFunction(myNeighbours[i], mypathEnd);
+                    // remember this new path for testing above
+                    Open.push(myPath);
+                    // mark this node in the world map as visited
+                    AStar[myPath.value] = true;
+                }
+            }
+            // remember this route as having no more untested options
+            Closed.push(myNode);
+        }
+    }
+    return result;
+}
+
+
 
 onload();
 
