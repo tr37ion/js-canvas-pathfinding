@@ -1,5 +1,3 @@
-// TODO: code changes needed for rectengular map routing
-
 // the game's canvas element
 var canvas = null;
 
@@ -14,10 +12,11 @@ var spritemapLoaded = false;
 
 // the world grid: a 2d array of tiles
 var world = [[]];
+var worldSize;
 
 // world grid size
-var worldWidth;
-var worldHeight;
+var gridWidth;
+var gridHeight;
 
 // size of the tiles in pixels
 var tileWidth = 32;
@@ -32,6 +31,9 @@ var currentPath;
 var distanceFunction = function(){};
 var findNeighbours = function(){};
 
+// anything higher than this number is number is considered blocked
+var maxWalkableTileNum = 0;
+
 // some console.log fixes
 if (typeof console == "undefined") {
     var console = {
@@ -41,38 +43,47 @@ if (typeof console == "undefined") {
 
 function onload() {
     console.log('Page loaded.');
-    createCanvas('gameCanvas', canvasClick);
+    initCanvas('gameCanvas', canvasClick);
     spritemap = new Image();
     spritemap.src = 'pixels.png';
     spritemap.onload = loaded;
 }
 
-function createCanvas(id, event) {
+function initCanvas(id, event) {
     canvas = document.getElementById(id);
-    if(!canvas) alert ("Element ID not found.");
-    setCanvasSize();
+    if (!canvas) alert("Element ID not found.");
+
+    resizeCanvas();
+
     canvas.addEventListener('click', event, false);
-    if(!canvas)
-        alert ("Browser doesn't support Canvas.");
+    if (!canvas) alert("Browser doesn't support Canvas.");
+
     ctx = canvas.getContext('2d');
-    if(!ctx)
-        alert("Mmm... no 2D context?!");
+    if (!ctx) alert("Mmm... no 2D context?!");
 }
 
 // TODO: make canvas fit to actual window.innerW/H (without scrollbars)
-function setCanvasSize() {
+function resizeCanvas() {
+    var dx = 0;
+    var dy = 0;
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight-4;
-    worldWidth = Math.floor(canvas.width/tileWidth);
-    worldHeight = Math.floor(canvas.height/tileHeight);
-    pathStart = [worldWidth, worldHeight];
+    // NOTE: MOD may be faster with bit-shifting when tiles have 2^x size
+    gridWidth = Math.floor(canvas.width/tileWidth);
+    gridHeight = Math.floor(canvas.height/tileHeight);
+    dx = canvas.width % tileWidth;
+    dy = canvas.height % tileHeight;
+    if (dx) gridWidth++;
+    if (dy) gridHeight++;
+    pathStart = [gridWidth, gridHeight];
     pathEnd = [0,0];
     currentPath = [];
-    canvas.border = "1px solid red";
+    worldSize = gridWidth * gridHeight;
+    //    canvas.style.border = "1px solid red";
 }
 
 function onresize() {
-    setCanvasSize();
+    resizeCanvas();
     createWorld();
 }
 
@@ -86,17 +97,17 @@ function createWorld() {
     console.log('Creating world ...');
 
     // create grid array
-    for (var x=0; x < worldWidth; x++) {
+    for (var x=0; x < gridWidth; x++) {
         world[x] = [];
-        for (var y=0; y < worldHeight; y++) {
+        for (var y=0; y < gridHeight; y++) {
             world[x][y] = 0;
         }
     }
 
     // generate random walls
     // where world[][] array set to 1 is wall
-    for (x=0; x < worldWidth; x++) {
-        for (y=0; y < worldHeight; y++) {
+    for (x=0; x < gridWidth; x++) {
+        for (y=0; y < gridHeight; y++) {
             if (Math.random() > 0.75)
                 world[x][y] = 1;
         }
@@ -107,8 +118,8 @@ function createWorld() {
     currentPath = [];
     while (currentPath.length == 0) {
         // set random path start and end positions
-        pathStart = [Math.floor(Math.random()*worldWidth), Math.floor(Math.random()*worldHeight)];
-        pathEnd = [Math.floor(Math.random()*worldWidth), Math.floor(Math.random()*worldHeight)];
+        pathStart = [Math.floor(Math.random()*gridWidth), Math.floor(Math.random()*gridHeight)];
+        pathEnd = [Math.floor(Math.random()*gridWidth), Math.floor(Math.random()*gridHeight)];
 
         if (world[pathStart[0]][pathStart[1]] == 0)
             currentPath = findPath(world, pathStart, pathEnd);
@@ -130,8 +141,9 @@ function redraw() {
     ctx.fillStyle = '#000000';
     ctx.fillRect(0, 0, canvas.with, canvas.height);
 
-    for (var x=0; x < worldWidth; x++) {
-        for (var y=0; y < worldHeight; y++) {
+    // draw map
+    for (var x=0; x < gridWidth; x++) {
+        for (var y=0; y < gridHeight; y++) {
             // choose a sprite to draw from spritemap
             switch(world[x][y]) {
             case 1:
@@ -176,7 +188,7 @@ function redraw() {
 }
 
 function canvasClick(event) {
-    var x,y;
+    var x, y;
 
     // get page coordinates
     if (event.pageX != undefined && event.pageY != undefined) {
@@ -196,14 +208,14 @@ function canvasClick(event) {
         Math.floor(y/tileHeight)
     ];
 
-    console.log('X:' + cell[0] + '   Y: ' + cell[1]);
-
-    pathStart = pathEnd;
-    pathEnd = cell;
-
-    // calulate path
-    currentPath = findPath(world, pathStart, pathEnd);
-    redraw();
+    if (world[cell[0]][cell[1]] <= maxWalkableTileNum) {  
+        console.log('X:' + cell[0] + '   Y: ' + cell[1]);
+        pathStart = pathEnd;
+        pathEnd = cell;
+        // calulate path
+        currentPath = findPath(world, pathStart, pathEnd);
+        redraw();
+    }
 }
 
 function findPath(world, pathStart, pathEnd) {
@@ -211,20 +223,6 @@ function findPath(world, pathStart, pathEnd) {
     var max = Math.max;
     var pow = Math.pow;
     var sqrt = Math.sqrt;
-
-    // the world data are integers
-    // anything higher than this number is number is considered blocked
-    // this is handy if you use numbered sprites, more than one
-    // of which is walkable road, grass, mud, etc.
-    var maxWalkableTileNum = 0;
-    
-    // keep track out of world dimensions
-    // Note that this A* implementation expects the world array to be square:
-    // it must have equal height and width. If your game world is rectengular,
-    // just fill the array with dummy values to pad the empty space.
-    var worldWidth = world[0].length;
-    var worldHeight = world.length;
-    var worldSize = worldWidth * worldHeight;
 
     // alternate heuristics, depending on your game:
     var distanceFunction = ManhattanDistance;
@@ -273,10 +271,10 @@ function findPath(world, pathStart, pathEnd) {
         var E = x+1;
         var W = x-1;
 
-        var myN = N>-1 && canWalkHere(x,N);
-        var myS = S<worldHeight && canWalkHere(x,S);
-        var myE = E<worldWidth && canWalkHere(E,y);
-        var myW = W>-1 && canWalkHere(W,y);
+        var myN = N > -1 && canWalkHere(x,N);
+        var myS = S < gridHeight && canWalkHere(x,S);
+        var myE = E < gridWidth && canWalkHere(E,y);
+        var myW = W > -1 && canWalkHere(W,y);
 
         var result = [];
 
@@ -315,10 +313,10 @@ function findPath(world, pathStart, pathEnd) {
 	// South West or North West cell including the times that
 	// you would be squeezing through a "crack"
     function DiagonalNeighboursFree(myN, myS, myE, myW, N, S, E, W, result) {
-        myN = N>-1;
-        myS = S<worldHeight;
-        myE = E<worldWidth;
-        myW = W>-1;
+        myN = N > -1;
+        myS = S < gridHeight;
+        myE = E < gridWidth;
+        myW = W > -1;
         
         if(myE) {
             if(myN && canWalkHere(E,N))
@@ -346,7 +344,7 @@ function findPath(world, pathStart, pathEnd) {
     function Node(Parent, Point) {
         var newNode = {
             Parent:Parent, //pointer to another Node object
-            value:Point.x+Point.y*worldWidth, // array index of the Node in the linear array
+            value:Point.x+Point.y*gridWidth, // array index of the Node in the linear array
             x:Point.x, // x location
             y:Point.y, // y location
             s2n:0, //distance cost from Start to Node
